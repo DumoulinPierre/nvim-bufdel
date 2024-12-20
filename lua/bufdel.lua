@@ -70,41 +70,63 @@ end
 -------------------- PUBLIC --------------------------------
 -- Delete a given buffer, ignoring changes if 'force' is set
 function M.delete_buffer_expr(bufexpr, force)
+  local current_buffer = vim.fn.bufnr()
+  local windows_with_buffer = vim.fn.win_findbuf(current_buffer)
   local listed_buffers = vim.fn.getbufinfo({buflisted = 1})
-  local tabpages = vim.fn.tabpagenr('$') -- Get total number of tabs
+  local tabpages = vim.fn.tabpagenr('$')
 
-  if #listed_buffers < 2 and tabpages < 2 then
-    -- Quit nvim only if there's no buffer and no other tab left
-    if options.quit then
-      if force then
-        vim.cmd('qall!')
+  -- Si plusieurs buffers sont ouverts dans la session
+  if #listed_buffers > 1 then
+    -- Si plusieurs fenêtres ont le même buffer, on ferme seulement la fenêtre active
+    if #windows_with_buffer > 1 then
+      vim.cmd('close')
+    else
+      -- Sinon, on change de buffer dans la même fenêtre
+      vim.cmd('bprevious')
+      vim.cmd('bd ' .. current_buffer)
+    end
+    return
+  end
+
+  -- Si un seul buffer est ouvert
+  if #listed_buffers == 1 then
+    -- Si ce buffer est affiché dans plusieurs fenêtres (splits)
+    if #windows_with_buffer > 1 then
+      vim.cmd('close')
+      return
+    else
+      -- Si c'est le dernier buffer dans la session
+      if tabpages < 2 then
+        if options.quit then
+          if force then
+            vim.cmd('qall!')
+          else
+            vim.cmd('confirm qall')
+          end
+          return
+        end
+        -- Créer un buffer vide si aucune fermeture n'est autorisée
+        vim.cmd('enew')
+        vim.cmd('bp')
+        return
       else
-        vim.cmd('confirm qall')
+        -- Si ce n'est pas le dernier tab, juste fermer la fenêtre
+        vim.cmd('close')
+        return
       end
+    end
+  end
+
+  -- Suppression du buffer spécifique si mentionné
+  if bufexpr ~= nil then
+    if tonumber(bufexpr) then
+      delete_buffer(tonumber(bufexpr), force)
       return
     end
-    -- Create a new empty buffer if quitting is not allowed
-    vim.cmd('enew')
-    vim.cmd('bp')
-    return
-  elseif #listed_buffers < 2 then
-    -- Close the current tab and switch to another one
-    vim.cmd('tabclose')
-    return
+    bufexpr = string.gsub(bufexpr, [[^['"]+]], '')  -- Enlever les guillemets début/fin
+    bufexpr = string.gsub(bufexpr, [[['"]+$]], '')
+    delete_buffer(vim.fn.bufnr(bufexpr), force)
   end
-
-  -- retrieve buffer number from buffer expression
-  if bufexpr == nil then
-    delete_buffer(vim.fn.bufnr(), force)
-    return
-  end
-  if tonumber(bufexpr) then
-    delete_buffer(tonumber(bufexpr), force)
-    return
-  end
-  bufexpr = string.gsub(bufexpr, [[^['"]+]], '')  -- escape any start quote
-  bufexpr = string.gsub(bufexpr, [[['"]+$]], '')  -- escape any end quote
-  delete_buffer(vim.fn.bufnr(bufexpr), force)
 end
 
 -- Delete all listed buffers except current, ignoring changes if 'force' is set
