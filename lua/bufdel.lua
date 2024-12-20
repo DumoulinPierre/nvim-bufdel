@@ -70,8 +70,11 @@ end
 -------------------- PUBLIC --------------------------------
 -- Delete a given buffer, ignoring changes if 'force' is set
 function M.delete_buffer_expr(bufexpr, force)
-  if #vim.fn.getbufinfo({buflisted = 1}) < 2 then
-    -- exit when there is only one buffer left
+  local listed_buffers = vim.fn.getbufinfo({buflisted = 1})
+  local tabpages = vim.fn.tabpagenr('$') -- Get total number of tabs
+
+  if #listed_buffers < 2 and tabpages < 2 then
+    -- Quit nvim only if there's no buffer and no other tab left
     if options.quit then
       if force then
         vim.cmd('qall!')
@@ -80,10 +83,16 @@ function M.delete_buffer_expr(bufexpr, force)
       end
       return
     end
-    -- don't exit and create a new empty buffer instead
+    -- Create a new empty buffer if quitting is not allowed
     vim.cmd('enew')
     vim.cmd('bp')
+    return
+  elseif #listed_buffers < 2 then
+    -- Close the current tab and switch to another one
+    vim.cmd('tabclose')
+    return
   end
+
   -- retrieve buffer number from buffer expression
   if bufexpr == nil then
     delete_buffer(vim.fn.bufnr(), force)
