@@ -7,6 +7,7 @@ local M = {}
 local options = {
   next = 'tabs',  -- how to retrieve the next buffer
   quit = true,    -- quit Neovim when last buffer is closed
+  last_cmd = nil, -- do nothing when last buffer is closed
 }
 
 -------------------- PRIVATE -------------------------------
@@ -97,6 +98,10 @@ function M.delete_buffer_expr(bufexpr, force)
     else
       -- Si c'est le dernier buffer dans la session
       if tabpages < 2 then
+        if options.last_cmd and options.last_cmd ~= "" then
+          vim.cmd(options.last_cmd)  -- Exécute la commande spécifiée
+          return
+        end
         if options.quit then
           if force then
             vim.cmd('qall!')
