@@ -100,6 +100,7 @@ function M.delete_buffer_expr(bufexpr, force)
       if tabpages < 2 then
         if options.last_cmd and options.last_cmd ~= "" then
           vim.cmd(options.last_cmd)  -- Exécute la commande spécifiée
+          vim.cmd('bd ' .. current_buffer)
           return
         end
         if options.quit then
