@@ -76,6 +76,19 @@ function M.delete_buffer_expr(bufexpr, force)
   local listed_buffers = vim.fn.getbufinfo({buflisted = 1})
   local tabpages = vim.fn.tabpagenr('$')
 
+  -- Vérifier si la fenêtre active est une fenêtre d'historique de commandes
+  if vim.fn.getcmdwintype() ~= "" then
+    vim.cmd('q')  -- Ferme la fenêtre de commande si elle est ouverte
+    return
+  end
+
+  -- Fermer toute fenêtre "spéciale" qui n'est pas un fichier éditable
+  local buftype = vim.bo.buftype
+  if buftype ~= "" and buftype ~= "acwrite" then
+    vim.cmd("q")
+    return
+  end
+
   -- Si plusieurs buffers sont ouverts dans la session
   if #listed_buffers > 1 then
     -- Si plusieurs fenêtres ont le même buffer, on ferme seulement la fenêtre active
